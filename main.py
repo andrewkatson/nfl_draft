@@ -1,5 +1,6 @@
 from bs4 import BeautifulSoup
 
+import io
 import matplotlib as mpl
 import os
 import pandas as pd
@@ -23,19 +24,20 @@ def create_urls_for_all_teams():
 
 def get_old_draft_data():
 
-    old_draft_data = None 
+    old_draft_data = None
 
     if os.path.exists(constants.OLD_DRAFT_DATA_PATH):
 
-        with open(constants.OLD_DRAFT_DATA_PATH, 'rb') as f: 
+        with open(constants.OLD_DRAFT_DATA_PATH, 'rb') as f:
             old_draft_data = pkl.load(f)
 
     return old_draft_data
 
+
 def store_old_draft_data(draft_data):
 
-    with open(constants.OLD_DRAFT_DATA_PATH, 'wb') as f: 
-        pkl.dump(old_draft_data, f)
+    with open(constants.OLD_DRAFT_DATA_PATH, 'wb') as f:
+        pkl.dump(draft_data, f)
 
 
 def get_all_team_draft_data():
@@ -47,14 +49,13 @@ def get_all_team_draft_data():
         old_draft_data = get_old_draft_data()
 
     draft_data = pd.DataFrame(columns=[
-                              "team_name", "abbreviation", "year", "player", "round", "games_played"], dtype=str)
+                              "Team", "Abbreviation", "Year", "Player", "Rnd", "AP1", "PB", "St", "G"], dtype=str)
 
     for abbreviation, url in urls.items():
 
-        # If there is old data and the current team's abbreviation exists in it and we don't want fresh data pull it.
-        if old_draft_data is not None and old_draft_data['abbreviation'].str.contains().any() and flags.args.fresh_data == 'no':
+        # If there is old data and the current team's abbreviation exists in it and we don't want fresh data don't pull it.
+        if old_draft_data is not None and old_draft_data['Abbreviation'].str.contains(abbreviation).any() and flags.args.fresh_data == 'no':
             continue
-
 
         fp = urllib.request.urlopen(url)
         mybytes = fp.read()
@@ -64,34 +65,42 @@ def get_all_team_draft_data():
 
         soup = BeautifulSoup(mystr, 'html.parser')
 
-        tables = soup.findAll('table')
-        links = table.findAll('a')
+        tables = soup.find_all('table')
+        tables_dfs = pd.read_html(io.StringIO(str(tables)))
 
-        drafts_per_year_for_team = extracted_drafts_by_year(tables)
+        for index, table in enumerate(tables):
+            table_df = tables_dfs[index]
 
-        player_history = get_all_player_history_data(links)
+            # Remove the top level index with "unnamed_0_level_0" and such
+            table_df.columns = table_df.columns.droplevel()
 
-        join_player_history_to_team(
-            draft_data, player_history, drafts_per_year_for_team)
+            # Add the team and abbreviation
+            table_df = table_df.assign(
+                Team=constants.TEAMS_ABBREVIATIONS[abbreviation])
+            table_df = table_df.assign(Abbreviation=abbreviation)
 
+            drafts_per_year_for_team = pair_down_data(table_df)
 
-    join_old_and_new_data(draft_data, old_draft_data)
+            draft_data = join_player_history_to_team(
+                draft_data, drafts_per_year_for_team)
+
+    draft_data = join_old_and_new_data(draft_data, old_draft_data)
+
+    print(draft_data.head())
     return draft_data
 
 
-def extracted_drafts_by_year(html_tables):
-    pass
+def pair_down_data(dataframe):
+    return dataframe[constants.COLS_TO_SELECT]
 
 
-def get_all_player_history_data(links):
-    pass
+def join_player_history_to_team(draft_data, drafts_per_year_for_team):
+    return pd.concat([draft_data, drafts_per_year_for_team], axis=0, ignore_index=True)
 
-
-def join_player_history_to_team(draft_data, player_history, drafts_per_year_for_team):
-    pass
 
 def join_old_and_new_data(new, old):
-    pass
+    return pd.concat([new, old], axis=0, ignore_index=True)
+
 
 def visualize(all_team_and_player_draft_data):
     pass

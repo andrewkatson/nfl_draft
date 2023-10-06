@@ -13,3 +13,5 @@ TEAMS_ABBREVIATIONS = {"nwe": "New England Patriots", "buf": "Buffalo Bills",
                        "ram": "Los Angeles Rams", "crd": "Arizone Cardinals"}
 
 OLD_DRAFT_DATA_PATH = "old_draft_data.pkl"
+
+COLS_TO_SELECT = ["Team", "Abbreviation", "Year", "Rnd", "Player", "AP1", "PB", "St", "G"]
