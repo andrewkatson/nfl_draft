@@ -141,7 +141,8 @@ def visualize_per_round_games_played(df, team):
 
     df = df.groupby("Rnd").sum()
     
-    fig = plt.figure(figsize = (10, 5))
+    fig = plt.figure()
+    fig.canvas.manager.full_screen_toggle()
     
     rounds = df.index
     games = df["G"].astype(int)
@@ -154,6 +155,8 @@ def visualize_per_round_games_played(df, team):
     plt.ylabel("No. of games played")
     plt.title(f"{team} games played per round drafted")
     plt.savefig(f"images/{team}_games_played_per_round_drafted.png")
+    
+    plt.close()
 
 
 def visualize_per_year_games_played(df, team):
@@ -179,6 +182,8 @@ def visualize_per_year_games_played(df, team):
     plt.ylabel("No. of games played")
     plt.title(f"{team} games played per year drafted")
     plt.savefig(f"images/{team}_games_played_per_year_drafted.png")
+    
+    plt.close()
 
 def main():
 
