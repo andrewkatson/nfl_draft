@@ -1,7 +1,7 @@
 from bs4 import BeautifulSoup
 
 import io
-import matplotlib as mpl
+import matplotlib.pyplot as plt 
 import os
 import pandas as pd
 import pickle as pkl
@@ -84,9 +84,9 @@ def get_all_team_draft_data():
             draft_data = join_player_history_to_team(
                 draft_data, drafts_per_year_for_team)
 
-    draft_data = join_old_and_new_data(draft_data, old_draft_data)
-
-    print(draft_data.head())
+    if old_draft_data is not None:
+        draft_data = join_old_and_new_data(draft_data, old_draft_data)
+    
     return draft_data
 
 
@@ -103,8 +103,81 @@ def join_old_and_new_data(new, old):
 
 
 def visualize(all_team_and_player_draft_data):
-    pass
+    
+    all_years_in_range = get_all_years_in_range()
+    
+    # For visualization we drop the years that arent in the range we care about. 
+    pared_down_by_year = all_team_and_player_draft_data[all_team_and_player_draft_data["Year"].isin(all_years_in_range)]
+    
+    for abbreviation in constants.TEAMS_ABBREVIATIONS.keys():
+        
+        pared_down_by_team = pared_down_by_year[pared_down_by_year["Abbreviation"] == abbreviation]
+        
+        if pared_down_by_team.empty:
+            continue
+            
+        visualize_per_round_games_played(pared_down_by_team, constants.TEAMS_ABBREVIATIONS[abbreviation])
+        
+        visualize_per_year_games_played(pared_down_by_team, constants.TEAMS_ABBREVIATIONS[abbreviation])
 
+def get_all_years_in_range(): 
+    
+    all_years_in_range = []
+    
+    for year in range(int(flags.args.last_date) + 1): 
+        
+        if year >= int(flags.args.first_date) and year <= int(flags.args.last_date):
+            all_years_in_range.append(str(year)) 
+            
+    return all_years_in_range
+
+def visualize_per_round_games_played(df, team):
+    
+    df = df[["Rnd", "G"]]
+    
+    df = df.dropna()
+    
+    df = df.astype({"G": int})
+
+    df = df.groupby("Rnd").sum()
+    
+    fig = plt.figure(figsize = (10, 5))
+    
+    rounds = df.index
+    games = df["G"].astype(int)
+ 
+    # creating the bar plot
+    plt.bar(rounds.values, games.values, color ='maroon', 
+            width = 0.4)
+    
+    plt.xlabel("Round drafted")
+    plt.ylabel("No. of games played")
+    plt.title(f"{team} games played per round drafted")
+    plt.savefig(f"images/{team}_games_played_per_round_drafted.png")
+
+
+def visualize_per_year_games_played(df, team):
+    df = df[["Year", "G"]]
+    
+    df = df.dropna()
+    
+    df = df.astype({"G": int})
+
+    df = df.groupby("Year").sum()
+    
+    fig = plt.figure(figsize = (10, 5))
+    
+    years = df.index
+    games = df["G"].astype(int)
+ 
+    # creating the bar plot
+    plt.bar(years.values, games.values, color ='maroon', 
+            width = 0.4)
+    
+    plt.xlabel("Year drafted")
+    plt.ylabel("No. of games played")
+    plt.title(f"{team} games played per year drafted")
+    plt.savefig(f"images/{team}_games_played_per_year_drafted.png")
 
 def main():
 
