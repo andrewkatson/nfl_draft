@@ -165,7 +165,8 @@ def visualize_per_year_games_played(df, team):
 
     df = df.groupby("Year").sum()
     
-    fig = plt.figure(figsize = (10, 5))
+    fig = plt.figure()
+    fig.canvas.manager.full_screen_toggle()
     
     years = df.index
     games = df["G"].astype(int)
