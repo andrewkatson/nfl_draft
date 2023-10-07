@@ -7,6 +7,7 @@ import pandas as pd
 import pickle as pkl
 import urllib.request
 
+import common
 import constants
 import flags
 
@@ -23,21 +24,11 @@ def create_urls_for_all_teams():
 
 
 def get_old_draft_data():
-
-    old_draft_data = None
-
-    if os.path.exists(constants.OLD_DRAFT_DATA_PATH):
-
-        with open(constants.OLD_DRAFT_DATA_PATH, 'rb') as f:
-            old_draft_data = pkl.load(f)
-
-    return old_draft_data
+    return common.get_data(constants.OLD_DRAFT_DATA_PATH)
 
 
 def store_old_draft_data(draft_data):
-
-    with open(constants.OLD_DRAFT_DATA_PATH, 'wb') as f:
-        pkl.dump(draft_data, f)
+    common.store_data(draft_data, constants.OLD_DRAFT_DATA_PATH)
 
 
 def get_all_team_draft_data():
@@ -45,7 +36,7 @@ def get_all_team_draft_data():
     urls = create_urls_for_all_teams()
 
     old_draft_data = None
-    if flags.args.fresh_data == 'no':
+    if flags.args.fresh_data == "False":
         old_draft_data = get_old_draft_data()
 
     draft_data = pd.DataFrame(columns=[
@@ -54,19 +45,14 @@ def get_all_team_draft_data():
     for abbreviation, url in urls.items():
 
         # If there is old data and the current team's abbreviation exists in it and we don't want fresh data don't pull it.
-        if old_draft_data is not None and old_draft_data['Abbreviation'].str.contains(abbreviation).any() and flags.args.fresh_data == 'no':
+        if old_draft_data is not None and old_draft_data['Abbreviation'].str.contains(abbreviation).any() and flags.args.fresh_data == "False":
             continue
 
-        fp = urllib.request.urlopen(url)
-        mybytes = fp.read()
-
-        mystr = mybytes.decode("utf8")
-        fp.close()
-
-        soup = BeautifulSoup(mystr, 'html.parser')
-
-        tables = soup.find_all('table')
-        tables_dfs = pd.read_html(io.StringIO(str(tables)))
+        table_dfs = common.get_tables_from_url(url)
+        
+        if table_dfs is None: 
+            print(f"{url} did not exist or had some error")
+            continue
 
         for index, table in enumerate(tables):
             table_df = tables_dfs[index]
@@ -81,11 +67,11 @@ def get_all_team_draft_data():
 
             drafts_per_year_for_team = pair_down_data(table_df)
 
-            draft_data = join_player_history_to_team(
+            draft_data = common.concat_with_identical_cols(
                 draft_data, drafts_per_year_for_team)
 
     if old_draft_data is not None:
-        draft_data = join_old_and_new_data(draft_data, old_draft_data)
+        draft_data = common.concat_with_identical_cols(draft_data, old_draft_data)
     
     return draft_data
 
@@ -94,17 +80,9 @@ def pair_down_data(dataframe):
     return dataframe[constants.COLS_TO_SELECT]
 
 
-def join_player_history_to_team(draft_data, drafts_per_year_for_team):
-    return pd.concat([draft_data, drafts_per_year_for_team], axis=0, ignore_index=True)
-
-
-def join_old_and_new_data(new, old):
-    return pd.concat([new, old], axis=0, ignore_index=True)
-
-
 def visualize(all_team_and_player_draft_data):
     
-    all_years_in_range = get_all_years_in_range()
+    all_years_in_range = common.get_all_years_in_range()
     
     # For visualization we drop the years that arent in the range we care about. 
     pared_down_by_year = all_team_and_player_draft_data[all_team_and_player_draft_data["Year"].isin(all_years_in_range)]
@@ -119,17 +97,6 @@ def visualize(all_team_and_player_draft_data):
         visualize_per_round_games_played(pared_down_by_team, constants.TEAMS_ABBREVIATIONS[abbreviation])
         
         visualize_per_year_games_played(pared_down_by_team, constants.TEAMS_ABBREVIATIONS[abbreviation])
-
-def get_all_years_in_range(): 
-    
-    all_years_in_range = []
-    
-    for year in range(int(flags.args.last_date) + 1): 
-        
-        if year >= int(flags.args.first_date) and year <= int(flags.args.last_date):
-            all_years_in_range.append(str(year)) 
-            
-    return all_years_in_range
 
 def visualize_per_round_games_played(df, team):
     

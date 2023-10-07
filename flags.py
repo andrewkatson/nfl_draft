@@ -22,6 +22,6 @@ parser.add_argument('--included_teams', default='all',
 parser.add_argument('--rounds_to_consider', default='all',
                    help='What rounds you want to consider for the analysis. All is the default.')
 
-parser.add_argument('--fresh_data', default='no', help='Whether you want fresh data or we can read from our db. Default is no')
+parser.add_argument('--fresh_data', default='False', help='Whether you want fresh data or we can read from our db. Default is False')
 
 args = parser.parse_args()

@@ -162,6 +162,7 @@ cython_debug/
 # NFL Draft Analysis Files
 old_draft_data.pkl
 images/*
+players/*
 
 # VS Code
 .vscode/*
