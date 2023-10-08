@@ -16,6 +16,7 @@ class Crawler:
         self.word_to_look_for = word
         self.regex_to_match = regex
         self.final_urls = []
+        self.depth = depth
 
     def get_linked_urls(self, url, html):
         soup = common.get_soup(html)
@@ -49,7 +50,7 @@ class Crawler:
     def run(self):
         count = 0
         depth = 1
-        while self.urls_to_visit and self.limit > count:
+        while self.urls_to_visit and self.limit > count and self.depth > depth:
             urls = self.urls_to_visit[depth]
             while urls and self.limit > count:
                 url = urls.pop(0)

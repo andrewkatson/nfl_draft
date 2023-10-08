@@ -2,6 +2,7 @@ import io
 import os
 import pandas as pd
 import string
+import time
 
 
 import common
@@ -10,7 +11,13 @@ import crawler
 import flags
 
 
-def get_every_player_info(limit=None, depth=None, players_to_get=1):
+def get_player_urls():
+    
+    if os.path.exists(constants.PLAYER_URL_DF) and flags.args.fresh_data == "False":
+        player_url_df = common.get_data(constants.PLAYER_MASTER_DF)
+        
+        return player_url_df["URL"]
+    
     player_alphabet_urls = []
     for letter in string.ascii_uppercase:
         player_alphabet_urls.append(
@@ -21,6 +28,21 @@ def get_every_player_info(limit=None, depth=None, players_to_get=1):
     player_url_crawler.run()
 
     player_urls = player_url_crawler.final_urls
+    
+    player_url_df = pd.DataFrame(columns = ["Suffix", "URL"], dtype=str)
+    
+    for url in player_urls:
+        suffix = url.rsplit('/', 1)[-1]
+        
+        player_url_df.loc[len(player_url_df.index)] = [suffix, url] 
+        
+    common.store_data(player_url_df, constants.PLAYER_URL_DF)
+    return player_url_df["URL"]
+        
+
+def get_every_player_info(limit=None, depth=None, players_to_get=1):
+    
+    player_urls = get_player_urls()
 
     player_df = None
     if os.path.exists(constants.PLAYER_MASTER_DF):
@@ -28,6 +50,7 @@ def get_every_player_info(limit=None, depth=None, players_to_get=1):
 
     count = 0
     for url in player_urls:
+        print(f"Starting player import {url}")
         if count < players_to_get:
             player_info = None
             # If the player exists in the master data frame and we dont want fresh data
@@ -46,6 +69,8 @@ def get_every_player_info(limit=None, depth=None, players_to_get=1):
         else:
             break
         count += 1
+        print(f"Finished player {url} import sleeping")
+        time.sleep(60)
 
     common.store_data(player_df, constants.PLAYER_MASTER_DF)
     return player_df
@@ -64,11 +89,17 @@ def get_player_info_from_raw_info(raw_player_info):
 
     tables = soup.find_all('table')
 
-    h1 = soup.find_all('h1')[0]
-
-    span = h1.find('span')
-
-    name = span.text
+    h1s = soup.find_all('h1')
+    
+    name = ""
+    for h1 in h1s:
+        span = h1.find('span')
+        
+        if span is None: 
+            continue
+        else:
+            name = span.text
+            break
 
     table_dfs = pd.read_html(io.StringIO(str(tables)))
 
@@ -104,4 +135,4 @@ def combine_columns_of_df(column_values):
             new_cols.append(' '.join(col).strip())
     return new_cols
 
-print(get_every_player_info(limit=10, depth=1, players_to_get=10).head())
+print(get_every_player_info(limit=30, depth=1, players_to_get=100).head())

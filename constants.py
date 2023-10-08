@@ -32,6 +32,8 @@ OLD_DRAFT_DATA_PATH = "old_draft_data.pkl"
 
 PLAYER_MASTER_DF = "players/players.pkl"
 
+PLAYER_URL_DF = "players/player_urls.pkl"
+
 COLS_TO_SELECT = ["Team", "Abbreviation", "Year",
                   "Rnd", "Player", "AP1", "PB", "St", "G"]
 
